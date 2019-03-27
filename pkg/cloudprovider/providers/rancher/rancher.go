@@ -16,14 +16,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/rancher/go-rancher/v2"
 
 	api "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/kubernetes/pkg/cloudprovider"
-	"k8s.io/kubernetes/pkg/controller"
+	"k8s.io/cloud-provider"
+	"k8s.io/klog"
 )
 
 type Host struct {
@@ -54,7 +53,8 @@ type CloudProvider struct {
 }
 
 // Initialize passes a Kubernetes clientBuilder interface to the cloud provider
-func (r *CloudProvider) Initialize(clientBuilder controller.ControllerClientBuilder) {}
+func (r *CloudProvider) Initialize(clientBuilder cloudprovider.ControllerClientBuilder, stop <-chan struct{}) {
+}
 
 // ProviderName returns the cloud provider ID.
 func (r *CloudProvider) ProviderName() string {
@@ -144,7 +144,7 @@ type hostAndIPAddresses struct {
 // GetLoadBalancer is an implementation of LoadBalancer.GetLoadBalancer
 func (r *CloudProvider) GetLoadBalancer(ctx context.Context, clusterName string, service *api.Service) (status *api.LoadBalancerStatus, exists bool, retErr error) {
 	name := formatLBName(r.GetLoadBalancerName(ctx, clusterName, service))
-	glog.Infof("GetLoadBalancer [%s]", name)
+	klog.Infof("GetLoadBalancer [%s]", name)
 
 	lb, err := r.getLBByName(name)
 	if err != nil {
@@ -152,7 +152,7 @@ func (r *CloudProvider) GetLoadBalancer(ctx context.Context, clusterName string,
 	}
 
 	if lb == nil {
-		glog.Infof("Can't find lb by name [%s]", name)
+		klog.Infof("Can't find lb by name [%s]", name)
 		return &api.LoadBalancerStatus{}, false, nil
 	}
 
@@ -171,7 +171,7 @@ func (r *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName stri
 	loadBalancerIP := service.Spec.LoadBalancerIP
 	ports := service.Spec.Ports
 	affinity := service.Spec.SessionAffinity
-	glog.Infof("EnsureLoadBalancer [%s] [%#v] [%#v] [%s] [%s]", name, loadBalancerIP, ports, hosts, affinity)
+	klog.Infof("EnsureLoadBalancer [%s] [%#v] [%#v] [%s] [%s]", name, loadBalancerIP, ports, hosts, affinity)
 
 	if loadBalancerIP != "" {
 		// Rancher doesn't support specifying loadBalancer IP
@@ -191,13 +191,13 @@ func (r *CloudProvider) EnsureLoadBalancer(ctx context.Context, clusterName stri
 	lbPorts := []string{}
 	for _, port := range ports {
 		if port.NodePort == 0 {
-			glog.Warningf("Ignoring port without NodePort: %s", port)
+			klog.Warningf("Ignoring port without NodePort: %s", port)
 		}
 		lbPorts = append(lbPorts, fmt.Sprintf("%v:%v/tcp", port.Port, port.Port))
 	}
 
 	if lb != nil && portsChanged(lbPorts, lb.LaunchConfig.Ports) {
-		glog.Infof("Deleting the lb because the ports changed %s", lb.Name)
+		klog.Infof("Deleting the lb because the ports changed %s", lb.Name)
 		// Cannot update ports on an LB, so if the ports have changed, need to recreate
 		err = r.deleteLoadBalancer(lb)
 		if err != nil {
@@ -290,7 +290,7 @@ func (r *CloudProvider) GetSetting(key string) (string, bool) {
 	opts.Filters["name"] = key
 	settings, err := r.client.Setting.List(opts)
 	if err != nil {
-		glog.Errorf("GetSetting(%s): Error: %s", key, err)
+		klog.Errorf("GetSetting(%s): Error: %s", key, err)
 		return "", false
 	}
 
@@ -343,7 +343,7 @@ func (r *CloudProvider) UpdateLoadBalancer(ctx context.Context, clusterName stri
 	}
 
 	name := formatLBName(r.GetLoadBalancerName(ctx, clusterName, service))
-	glog.Infof("UpdateLoadBalancer [%s] [%s]", name, hosts)
+	klog.Infof("UpdateLoadBalancer [%s] [%s]", name, hosts)
 	lb, err := r.getLBByName(name)
 	if err != nil {
 		return err
@@ -369,25 +369,23 @@ func (r *CloudProvider) UpdateLoadBalancer(ctx context.Context, clusterName stri
 // EnsureLoadBalancerDeleted is an implementation of LoadBalancer.EnsureLoadBalancerDeleted.
 func (r *CloudProvider) EnsureLoadBalancerDeleted(ctx context.Context, clusterName string, service *api.Service) error {
 	name := formatLBName(r.GetLoadBalancerName(ctx, clusterName, service))
-	glog.Infof("EnsureLoadBalancerDeleted [%s]", name)
+	klog.Infof("EnsureLoadBalancerDeleted [%s]", name)
 	lb, err := r.getLBByName(name)
 	if err != nil {
 		return err
 	}
 
 	if lb == nil {
-		glog.Infof("Couldn't find LB %s to delete. Nothing to do.")
+		klog.Infof("Couldn't find LB %s to delete. Nothing to do.")
 		return nil
 	}
 
 	return r.deleteLoadBalancer(lb)
 }
 
-
 func (r *CloudProvider) GetLoadBalancerName(ctx context.Context, clusterName string, service *api.Service) string {
 	return cloudprovider.DefaultLoadBalancerName(service)
 }
-
 
 func (r *CloudProvider) getOrCreateEnvironment() (*client.Stack, error) {
 	opts := client.NewListOpts()
@@ -560,7 +558,7 @@ func (r *CloudProvider) waitForAction(action string, callback waitCallback) <-ch
 		for i := 0; i < 30; i++ {
 			foundAction, err := callback(ready)
 			if err != nil {
-				glog.Errorf("Error: %#v", err)
+				klog.Errorf("Error: %#v", err)
 				return
 			}
 
@@ -569,7 +567,7 @@ func (r *CloudProvider) waitForAction(action string, callback waitCallback) <-ch
 			}
 			time.Sleep(time.Second * time.Duration(sleep))
 		}
-		glog.Errorf("Timed out waiting for action %s.", action)
+		klog.Errorf("Timed out waiting for action %s.", action)
 	}()
 	return ready
 }
@@ -648,19 +646,19 @@ func (r *CloudProvider) deleteLBConsumedServices(lb *client.LoadBalancerService)
 		consumedBy := &client.ServiceCollection{}
 		err = r.client.GetLink(service.Resource, "consumedbyservices", consumedBy)
 		if err != nil {
-			glog.Errorf("Error getting consumedby services for service %s. This service won't be deleted. Error: %#v",
+			klog.Errorf("Error getting consumedby services for service %s. This service won't be deleted. Error: %#v",
 				service.Id, err)
 			continue
 		}
 
 		if len(consumedBy.Data) > 1 {
-			glog.Infof("Service %s has more than consumer. Will not delete it.", service.Id)
+			klog.Infof("Service %s has more than consumer. Will not delete it.", service.Id)
 			continue
 		}
 
 		err = r.client.Service.Delete(&service)
 		if err != nil {
-			glog.Warningf("Error deleting service %s. Moving on. Error: %#v", service.Id, err)
+			klog.Warningf("Error deleting service %s. Moving on. Error: %#v", service.Id, err)
 		}
 	}
 
@@ -692,14 +690,14 @@ func (r *CloudProvider) NodeAddresses(ctx context.Context, nodeName types.NodeNa
 // ExternalID returns the cloud provider ID of the specified instance (deprecated).
 func (r *CloudProvider) ExternalID(ctx context.Context, nodeName types.NodeName) (string, error) {
 	name := string(nodeName)
-	glog.Infof("ExternalID [%s]", name)
+	klog.Infof("ExternalID [%s]", name)
 	return r.InstanceID(ctx, nodeName)
 }
 
 // InstanceID returns the cloud provider ID of the specified instance.
 func (r *CloudProvider) InstanceID(ctx context.Context, nodeName types.NodeName) (string, error) {
 	name := string(nodeName)
-	glog.Infof("InstanceID [%s]", name)
+	klog.Infof("InstanceID [%s]", name)
 	host, err := r.hostGetOrFetchFromCache(name)
 	if err != nil {
 		return "", err
@@ -729,7 +727,7 @@ func (r *CloudProvider) InstanceTypeByProviderID(ctx context.Context, providerID
 
 // List lists instances that match 'filter' which is a regular expression which must match the entire instance name (fqdn)
 func (r *CloudProvider) List(filter string) ([]types.NodeName, error) {
-	glog.Infof("List %s", filter)
+	klog.Infof("List %s", filter)
 
 	opts := client.NewListOpts()
 	opts.Filters["removed_null"] = "1"

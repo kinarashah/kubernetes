@@ -20,11 +20,14 @@ package dockershim
 
 import (
 	"time"
+	"k8s.io/klog/v2"
 
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
 
 func (ds *dockerService) getContainerStats(c *runtimeapi.Container) (*runtimeapi.ContainerStats, error) {
+	klog.V(2).InfoS("Kinara!!!!....getContainerStats", "containerID", c.Id)
+	
 	statsJSON, err := ds.client.GetContainerStats(c.Id)
 	if err != nil {
 		return nil, err

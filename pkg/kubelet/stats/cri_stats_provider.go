@@ -159,6 +159,8 @@ func (p *criStatsProvider) listPodStatsPartiallyFromCRI(updateCPUNanoCoreUsage b
 	// fsIDtoInfo is a map from filesystem id to its stats. This will be used
 	// as a cache to avoid querying cAdvisor for the filesystem stats with the
 	// same filesystem id many times.
+	klog.InfoS("rancher: entered listPodStatsPartiallyFromCRI", podSandboxMap, containerMap)
+
 	fsIDtoInfo := make(map[runtimeapi.FilesystemIdentifier]*cadvisorapiv2.FsInfo)
 
 	// sandboxIDToPodStats is a temporary map from sandbox ID to its pod stats.
@@ -206,7 +208,7 @@ func (p *criStatsProvider) listPodStatsPartiallyFromCRI(updateCPUNanoCoreUsage b
 		cs := p.makeContainerStats(stats, container, rootFsInfo, fsIDtoInfo, podSandbox.GetMetadata(), updateCPUNanoCoreUsage)
 		p.addPodNetworkStats(ps, podSandboxID, caInfos, cs, containerNetworkStats[podSandboxID])
 		p.addPodCPUMemoryStats(ps, types.UID(podSandbox.Metadata.Uid), allInfos, cs)
-		p.addProcessStats(ps, types.UID(podSandbox.Metadata.Uid), allInfos, cs)
+		p.addProcessStats(ps, types.UID(podSandbox.Metadata.Uid), allInfos)
 
 		// If cadvisor stats is available for the container, use it to populate
 		// container stats
@@ -230,6 +232,7 @@ func (p *criStatsProvider) listPodStatsPartiallyFromCRI(updateCPUNanoCoreUsage b
 }
 
 func (p *criStatsProvider) listPodStatsStrictlyFromCRI(updateCPUNanoCoreUsage bool, containerMap map[string]*runtimeapi.Container, podSandboxMap map[string]*runtimeapi.PodSandbox, rootFsInfo *cadvisorapiv2.FsInfo) ([]statsapi.PodStats, error) {
+	klog.InfoS("rancher: entered listPodStatsStrictlyFromCRI")
 	criSandboxStats, err := p.runtimeService.ListPodSandboxStats(&runtimeapi.PodSandboxStatsFilter{})
 	if err != nil {
 		return nil, err
@@ -511,6 +514,7 @@ func (p *criStatsProvider) addPodNetworkStats(
 		networkStats := cadvisorInfoToNetworkStats(&caPodSandbox)
 		if networkStats != nil {
 			ps.Network = networkStats
+			klog.InfoS("rancher: addPodNetworkStats: got this from cadvisor! return;")
 			return
 		}
 	}
@@ -537,9 +541,11 @@ func (p *criStatsProvider) addPodCPUMemoryStats(
 		cpu, memory := cadvisorInfoToCPUandMemoryStats(podCgroupInfo)
 		ps.CPU = cpu
 		ps.Memory = memory
+		klog.InfoS("rancher: podCgroupInfo: got from cadvisor!, return")
 		return
 	}
 
+	klog.InfoS("rancher: podCgroupInfo: using from cri-dockerd", cs.CPU != nil, cs.Memory != nil)
 	// Sum Pod cpu and memory stats from containers stats.
 	if cs.CPU != nil {
 		if ps.CPU == nil {
@@ -578,7 +584,6 @@ func (p *criStatsProvider) addProcessStats(
 	ps *statsapi.PodStats,
 	podUID types.UID,
 	allInfos map[string]cadvisorapiv2.ContainerInfo,
-	cs *statsapi.ContainerStats,
 ) {
 	// try get process stats from cadvisor only.
 	info := getCadvisorPodInfoFromPodUID(podUID, allInfos)
@@ -874,14 +879,17 @@ func (p *criStatsProvider) addCadvisorContainerStats(
 	caPodStats *cadvisorapiv2.ContainerInfo,
 ) {
 	if caPodStats.Spec.HasCustomMetrics {
+		klog.InfoS("kinara: HasCustomMetrics from cadvisor")
 		cs.UserDefinedMetrics = cadvisorInfoToUserDefinedMetrics(caPodStats)
 	}
 
 	cpu, memory := cadvisorInfoToCPUandMemoryStats(caPodStats)
 	if cpu != nil {
+		klog.InfoS("kinara: cpu from cadvisor")
 		cs.CPU = cpu
 	}
 	if memory != nil {
+		klog.InfoS("kinara: memory from cadvisor")
 		cs.Memory = memory
 	}
 

@@ -19,6 +19,7 @@ package stats
 import (
 	"errors"
 	"fmt"
+	"k8s.io/kubernetes/pkg/kubelet/leaky"
 	"path"
 	"sort"
 	"strings"
@@ -128,6 +129,8 @@ func (p *criStatsProvider) ListPodStatsAndUpdateCPUNanoCoreUsage() ([]statsapi.P
 func (p *criStatsProvider) listPodStats(updateCPUNanoCoreUsage bool) ([]statsapi.PodStats, error) {
 	// Gets node root filesystem information, which will be used to populate
 	// the available and capacity bytes/inodes in container stats.
+
+	klog.InfoS("rancher: using listPodStats criStats!")
 	rootFsInfo, err := p.cadvisor.RootFsInfo()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rootFs info: %v", err)
@@ -152,10 +155,108 @@ func (p *criStatsProvider) listPodStats(updateCPUNanoCoreUsage bool) ([]statsapi
 			)
 		}
 	}
-	return p.listPodStatsPartiallyFromCRI(updateCPUNanoCoreUsage, containerMap, podSandboxMap, &rootFsInfo)
+	return p.listPodStatsPartiallyFromCRI(updateCPUNanoCoreUsage, containerMap, podSandboxMap, rootFsInfo)
 }
 
-func (p *criStatsProvider) listPodStatsPartiallyFromCRI(updateCPUNanoCoreUsage bool, containerMap map[string]*runtimeapi.Container, podSandboxMap map[string]*runtimeapi.PodSandbox, rootFsInfo *cadvisorapiv2.FsInfo) ([]statsapi.PodStats, error) {
+func (p *criStatsProvider) listPodStatsPartiallyFromCRI(updateCPUNanoCoreUsage bool, containerMap map[string]*runtimeapi.Container, podSandboxMap map[string]*runtimeapi.PodSandbox, rootFsInfo2 cadvisorapiv2.FsInfo) ([]statsapi.PodStats, error) {
+	// Gets node root filesystem information and image filesystem stats, which
+	// will be used to populate the available and capacity bytes/inodes in
+	// container stats.
+	//rootFsInfo2, err := p.cadvisor.RootFsInfo()
+	//if err != nil {
+	//	return nil, fmt.Errorf("failed to get rootFs info: %v", err)
+	//}
+
+	klog.InfoS("rancher: using listPodStatsPartiallyFromCRI!")
+	imageFsInfo, err := p.cadvisor.ImagesFsInfo()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get imageFs info: %v", err)
+	}
+	infos, err := getCadvisorContainerInfo(p.cadvisor)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get container info from cadvisor: %v", err)
+	}
+
+	filteredInfos, allInfos := filterTerminatedContainerInfoAndAssembleByPodCgroupKey(infos)
+	// Map each container to a pod and update the PodStats with container data.
+	podToStats := map[statsapi.PodReference]*statsapi.PodStats{}
+	for key, cinfo := range filteredInfos {
+		// On systemd using devicemapper each mount into the container has an
+		// associated cgroup. We ignore them to ensure we do not get duplicate
+		// entries in our summary. For details on .mount units:
+		// http://man7.org/linux/man-pages/man5/systemd.mount.5.html
+		if strings.HasSuffix(key, ".mount") {
+			continue
+		}
+		// Build the Pod key if this container is managed by a Pod
+		if !isPodManagedContainer(&cinfo) {
+			continue
+		}
+		ref := buildPodRef(cinfo.Spec.Labels)
+
+		// Lookup the PodStats for the pod using the PodRef. If none exists,
+		// initialize a new entry.
+		podStats, found := podToStats[ref]
+		if !found {
+			podStats = &statsapi.PodStats{PodRef: ref}
+			podToStats[ref] = podStats
+		}
+
+		// Update the PodStats entry with the stats from the container by
+		// adding it to podStats.Containers.
+		containerName := kubetypes.GetContainerName(cinfo.Spec.Labels)
+		if containerName == leaky.PodInfraContainerName {
+			// Special case for infrastructure container which is hidden from
+			// the user and has network stats.
+			podStats.Network = cadvisorInfoToNetworkStats(&cinfo)
+		} else {
+			podStats.Containers = append(podStats.Containers, *cadvisorInfoToContainerStats(containerName, &cinfo, &rootFsInfo2, &imageFsInfo))
+		}
+	}
+
+	// Add each PodStats to the result.
+	result := make([]statsapi.PodStats, 0, len(podToStats))
+	for _, podStats := range podToStats {
+		// Lookup the volume stats for each pod.
+		podUID := types.UID(podStats.PodRef.UID)
+		var ephemeralStats []statsapi.VolumeStats
+		if vstats, found := p.resourceAnalyzer.GetPodVolumeStats(podUID); found {
+			ephemeralStats = make([]statsapi.VolumeStats, len(vstats.EphemeralVolumes))
+			copy(ephemeralStats, vstats.EphemeralVolumes)
+			podStats.VolumeStats = append(append([]statsapi.VolumeStats{}, vstats.EphemeralVolumes...), vstats.PersistentVolumes...)
+		}
+
+		logStats, err := p.hostStatsProvider.getPodLogStats(podStats.PodRef.Namespace, podStats.PodRef.Name, podUID, &rootFsInfo2)
+		if err != nil {
+			klog.ErrorS(err, "Unable to fetch pod log stats", "pod", klog.KRef(podStats.PodRef.Namespace, podStats.PodRef.Name))
+		}
+		etcHostsStats, err := p.hostStatsProvider.getPodEtcHostsStats(podUID, &rootFsInfo2)
+		if err != nil {
+			klog.ErrorS(err, "Unable to fetch pod etc hosts stats", "pod", klog.KRef(podStats.PodRef.Namespace, podStats.PodRef.Name))
+		}
+
+		podStats.EphemeralStorage = calcEphemeralStorage(podStats.Containers, ephemeralStats, &rootFsInfo2, logStats, etcHostsStats, false)
+		// Lookup the pod-level cgroup's CPU and memory stats
+		podInfo := getCadvisorPodInfoFromPodUID(podUID, allInfos)
+		if podInfo != nil {
+			cpu, memory := cadvisorInfoToCPUandMemoryStats(podInfo)
+			podStats.CPU = cpu
+			podStats.Memory = memory
+			podStats.ProcessStats = cadvisorInfoToProcessStats(podInfo)
+		}
+
+		//status, found := p.statusProvider.GetPodStatus(podUID)
+		//if found && status.StartTime != nil && !status.StartTime.IsZero() {
+		//	podStats.StartTime = *status.StartTime
+		//	// only append stats if we were able to get the start time of the pod
+		//	result = append(result, *podStats)
+		//}
+	}
+
+	return result, nil
+}
+
+func (p *criStatsProvider) listPodStatsPartiallyFromCRI2(updateCPUNanoCoreUsage bool, containerMap map[string]*runtimeapi.Container, podSandboxMap map[string]*runtimeapi.PodSandbox, rootFsInfo *cadvisorapiv2.FsInfo) ([]statsapi.PodStats, error) {
 	// fsIDtoInfo is a map from filesystem id to its stats. This will be used
 	// as a cache to avoid querying cAdvisor for the filesystem stats with the
 	// same filesystem id many times.

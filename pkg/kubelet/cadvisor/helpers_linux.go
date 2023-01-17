@@ -21,6 +21,7 @@ package cadvisor
 
 import (
 	"fmt"
+	"k8s.io/klog/v2"
 
 	cadvisorfs "github.com/google/cadvisor/fs"
 )
@@ -37,6 +38,8 @@ func (i *imageFsInfoProvider) ImageFsInfoLabel() (string, error) {
 	// This is a temporary workaround to get stats for cri-o from cadvisor
 	// and should be removed.
 	// Related to https://github.com/kubernetes/kubernetes/issues/51798
+	klog.InfoS("rancher: returning label docker images")
+	return cadvisorfs.LabelDockerImages, nil
 	if i.runtimeEndpoint == CrioSocket || i.runtimeEndpoint == "unix://"+CrioSocket {
 		return cadvisorfs.LabelCrioImages, nil
 	}

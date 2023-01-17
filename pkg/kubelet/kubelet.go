@@ -657,28 +657,29 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	hostStatsProvider := stats.NewHostStatsProvider(kubecontainer.RealOS{}, func(podUID types.UID) string {
 		return getEtcHostsPath(klet.getPodDir(podUID))
 	})
-	//if kubeDeps.useLegacyCadvisorStats {
-	klog.InfoS("rancher: using cadvisorStatsProvider!")
-	klet.StatsProvider = stats.NewCadvisorStatsProvider(
-		klet.cadvisor,
-		klet.resourceAnalyzer,
-		klet.podManager,
-		klet.runtimeCache,
-		klet.containerRuntime,
-		klet.statusManager,
-		hostStatsProvider)
-	//} else {
-	//	klet.StatsProvider = stats.NewCRIStatsProvider(
-	//		klet.cadvisor,
-	//		klet.resourceAnalyzer,
-	//		klet.podManager,
-	//		klet.runtimeCache,
-	//		kubeDeps.RemoteRuntimeService,
-	//		kubeDeps.RemoteImageService,
-	//		hostStatsProvider,
-	//		utilfeature.DefaultFeatureGate.Enabled(features.DisableAcceleratorUsageMetrics),
-	//		utilfeature.DefaultFeatureGate.Enabled(features.PodAndContainerStatsFromCRI))
-	//}
+	if kubeDeps.useLegacyCadvisorStats {
+		klog.InfoS("rancher: using cadvisorStatsProvider!")
+		klet.StatsProvider = stats.NewCadvisorStatsProvider(
+			klet.cadvisor,
+			klet.resourceAnalyzer,
+			klet.podManager,
+			klet.runtimeCache,
+			klet.containerRuntime,
+			klet.statusManager,
+			hostStatsProvider)
+	} else {
+		klog.InfoS("rancher: using NewCRIStatsProvider!")
+		klet.StatsProvider = stats.NewCRIStatsProvider(
+			klet.cadvisor,
+			klet.resourceAnalyzer,
+			klet.podManager,
+			klet.runtimeCache,
+			kubeDeps.RemoteRuntimeService,
+			kubeDeps.RemoteImageService,
+			hostStatsProvider,
+			utilfeature.DefaultFeatureGate.Enabled(features.DisableAcceleratorUsageMetrics),
+			utilfeature.DefaultFeatureGate.Enabled(features.PodAndContainerStatsFromCRI))
+	}
 
 	klet.pleg = pleg.NewGenericPLEG(klet.containerRuntime, plegChannelCapacity, plegRelistPeriod, klet.podCache, clock.RealClock{})
 	klet.runtimeState = newRuntimeState(maxWaitForContainerRuntime)

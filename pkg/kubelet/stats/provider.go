@@ -18,6 +18,7 @@ package stats
 
 import (
 	"fmt"
+	"k8s.io/klog/v2"
 
 	cadvisorapiv1 "github.com/google/cadvisor/info/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -133,6 +134,7 @@ func (p *Provider) GetCgroupCPUAndMemoryStats(cgroupName string, updateStats boo
 
 // RootFsStats returns the stats of the node root filesystem.
 func (p *Provider) RootFsStats() (*statsapi.FsStats, error) {
+	klog.InfoS("rancher: RootFsStats!")
 	rootFsInfo, err := p.cadvisor.RootFsInfo()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rootFs info: %v", err)

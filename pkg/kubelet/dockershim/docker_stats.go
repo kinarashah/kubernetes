@@ -23,6 +23,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"k8s.io/klog/v2"
 
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 )
@@ -50,6 +51,7 @@ func (ds *dockerService) ContainerStats(ctx context.Context, r *runtimeapi.Conta
 
 // ListContainerStats returns stats for a list container stats request based on a filter.
 func (ds *dockerService) ListContainerStats(ctx context.Context, r *runtimeapi.ListContainerStatsRequest) (*runtimeapi.ListContainerStatsResponse, error) {
+	klog.InfoS("Rancher: ListContainerStats dockerService!!!!")
 	containerStatsFilter := r.GetFilter()
 	filter := &runtimeapi.ContainerFilter{}
 

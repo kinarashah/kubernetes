@@ -234,7 +234,7 @@ func (m *managerImpl) synchronize(diskInfoProvider DiskInfoProvider, podFunc Act
 		return nil
 	}
 
-	klog.V(3).InfoS("Eviction manager: synchronize housekeeping")
+	klog.InfoS("Eviction manager: synchronize housekeeping")
 	// build the ranking functions (if not yet known)
 	// TODO: have a function in cadvisor that lets us know if global housekeeping has completed
 	if m.dedicatedImageFs == nil {

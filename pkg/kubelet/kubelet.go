@@ -715,6 +715,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 			klet.statusManager,
 			hostStatsProvider)
 	} else {
+		klog.InfoS("Rancher: NewCRIStatsProvider!!!!")
 		klet.StatsProvider = stats.NewCRIStatsProvider(
 			klet.cadvisor,
 			klet.resourceAnalyzer,

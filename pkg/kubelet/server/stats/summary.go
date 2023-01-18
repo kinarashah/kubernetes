@@ -68,6 +68,8 @@ func NewSummaryProvider(statsProvider Provider) SummaryProvider {
 func (sp *summaryProviderImpl) Get(updateStats bool) (*statsapi.Summary, error) {
 	// TODO(timstclair): Consider returning a best-effort response if any of
 	// the following errors occur.
+
+	klog.InfoS("Rancher: summaryProviderImpl Get()")
 	node, err := sp.provider.GetNode()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node info: %v", err)
@@ -77,18 +79,24 @@ func (sp *summaryProviderImpl) Get(updateStats bool) (*statsapi.Summary, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to get root cgroup stats: %v", err)
 	}
+
+	klog.InfoS("Rancher: summaryProviderImpl RootFsStats()")
 	rootFsStats, err := sp.provider.RootFsStats()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rootFs stats: %v", err)
 	}
+
+	klog.InfoS("Rancher: summaryProviderImpl ImageFsStats()")
 	imageFsStats, err := sp.provider.ImageFsStats()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get imageFs stats: %v", err)
 	}
 	var podStats []statsapi.PodStats
 	if updateStats {
+		klog.InfoS("Rancher: summaryProviderImpl ListPodStatsAndUpdateCPUNanoCoreUsage()")
 		podStats, err = sp.provider.ListPodStatsAndUpdateCPUNanoCoreUsage()
 	} else {
+		klog.InfoS("Rancher: summaryProviderImpl ListPodStats()")
 		podStats, err = sp.provider.ListPodStats()
 	}
 	if err != nil {
@@ -121,21 +129,26 @@ func (sp *summaryProviderImpl) Get(updateStats bool) (*statsapi.Summary, error) 
 func (sp *summaryProviderImpl) GetCPUAndMemoryStats() (*statsapi.Summary, error) {
 	// TODO(timstclair): Consider returning a best-effort response if any of
 	// the following errors occur.
+	klog.InfoS("Rancher: summaryProviderImpl GetCPUAndMemoryStats()")
 	node, err := sp.provider.GetNode()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get node info: %v", err)
 	}
 	nodeConfig := sp.provider.GetNodeConfig()
+
+	klog.InfoS("Rancher: summaryProviderImpl GetCgroupCPUAndMemoryStats()")
 	rootStats, err := sp.provider.GetCgroupCPUAndMemoryStats("/", false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get root cgroup stats: %v", err)
 	}
 
+	klog.InfoS("Rancher: summaryProviderImpl ListPodCPUAndMemoryStats()")
 	podStats, err := sp.provider.ListPodCPUAndMemoryStats()
 	if err != nil {
 		return nil, fmt.Errorf("failed to list pod stats: %v", err)
 	}
 
+	klog.InfoS("Rancher: summaryProviderImpl GetSystemContainersCPUAndMemoryStats()")
 	nodeStats := statsapi.NodeStats{
 		NodeName:         node.Name,
 		CPU:              rootStats.CPU,

@@ -79,6 +79,7 @@ func (p *cadvisorStatsProvider) ListPodStats() ([]statsapi.PodStats, error) {
 	// Gets node root filesystem information and image filesystem stats, which
 	// will be used to populate the available and capacity bytes/inodes in
 	// container stats.
+	klog.InfoS("Rancher: ListPodStats() from cadvisorStatsProvider")
 	rootFsInfo, err := p.cadvisor.RootFsInfo()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get rootFs info: %v", err)
@@ -181,6 +182,7 @@ func (p *cadvisorStatsProvider) ListPodStatsAndUpdateCPUNanoCoreUsage() ([]stats
 
 // ListPodCPUAndMemoryStats returns the cpu and memory stats of all the pod-managed containers.
 func (p *cadvisorStatsProvider) ListPodCPUAndMemoryStats() ([]statsapi.PodStats, error) {
+	klog.InfoS("Rancher: ListPodCPUAndMemoryStats() from cadvisorStatsProvider")
 	infos, err := getCadvisorContainerInfo(p.cadvisor)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get container info from cadvisor: %v", err)
@@ -241,6 +243,7 @@ func (p *cadvisorStatsProvider) ListPodCPUAndMemoryStats() ([]statsapi.PodStats,
 
 // ImageFsStats returns the stats of the filesystem for storing images.
 func (p *cadvisorStatsProvider) ImageFsStats() (*statsapi.FsStats, error) {
+	klog.InfoS("Rancher: ImageFsStats() from cadvisorStatsProvider")
 	imageFsInfo, err := p.cadvisor.ImagesFsInfo()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get imageFs info: %v", err)

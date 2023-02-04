@@ -69,5 +69,6 @@ func EphemeralStorageCapacityFromFsInfo(info cadvisorapi2.FsInfo) v1.ResourceLis
 // be removed. Related issue:
 // https://github.com/kubernetes/kubernetes/issues/51798
 func UsingLegacyCadvisorStats(runtimeEndpoint string) bool {
+	return true
 	return runtimeEndpoint == CrioSocket || runtimeEndpoint == "unix://"+CrioSocket
 }

@@ -30,10 +30,12 @@ import (
 	// Register supported container handlers.
 	_ "github.com/google/cadvisor/container/containerd/install"
 	_ "github.com/google/cadvisor/container/crio/install"
+	_ "github.com/google/cadvisor/container/docker/install"
 	_ "github.com/google/cadvisor/container/systemd/install"
 
 	"github.com/google/cadvisor/cache/memory"
 	cadvisormetrics "github.com/google/cadvisor/container"
+	"github.com/google/cadvisor/container/docker"
 	"github.com/google/cadvisor/events"
 	cadvisorapi "github.com/google/cadvisor/info/v1"
 	cadvisorapiv2 "github.com/google/cadvisor/info/v2"
@@ -77,6 +79,14 @@ func init() {
 			klog.ErrorS(nil, "Expected cAdvisor flag not found", "flag", name)
 		}
 	}
+
+	err := cadvisormetrics.RegisterPlugin("docker", docker.NewPlugin())
+	if err != nil {
+		fmt.Println("kinara: RegisterPlugin", "docker")
+	} else {
+		fmt.Println("kinara: dockerPlugin successfully registered!!!")
+	}
+
 }
 
 // New creates a new cAdvisor Interface for linux systems.

@@ -668,16 +668,18 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 			klet.statusManager,
 			hostStatsProvider)
 	} else {
-		klet.StatsProvider = stats.NewCRIStatsProvider(
-			klet.cadvisor,
-			klet.resourceAnalyzer,
-			klet.podManager,
-			klet.runtimeCache,
-			kubeDeps.RemoteRuntimeService,
-			kubeDeps.RemoteImageService,
-			hostStatsProvider,
-			utilfeature.DefaultFeatureGate.Enabled(features.DisableAcceleratorUsageMetrics),
-			utilfeature.DefaultFeatureGate.Enabled(features.PodAndContainerStatsFromCRI))
+
+		fmt.Println("ERROR: somewhere needs CRISTATSPROVIDER!!!")
+		//klet.StatsProvider = stats.NewCRIStatsProvider(
+		//	klet.cadvisor,
+		//	klet.resourceAnalyzer,
+		//	klet.podManager,
+		//	klet.runtimeCache,
+		//	kubeDeps.RemoteRuntimeService,
+		//	kubeDeps.RemoteImageService,
+		//	hostStatsProvider,
+		//	utilfeature.DefaultFeatureGate.Enabled(features.DisableAcceleratorUsageMetrics),
+		//	utilfeature.DefaultFeatureGate.Enabled(features.PodAndContainerStatsFromCRI))
 	}
 
 	klet.pleg = pleg.NewGenericPLEG(klet.containerRuntime, plegChannelCapacity, plegRelistPeriod, klet.podCache, clock.RealClock{})
@@ -1175,51 +1177,61 @@ type Kubelet struct {
 
 // ListPodStats is delegated to StatsProvider, which implements stats.Provider interface
 func (kl *Kubelet) ListPodStats() ([]statsapi.PodStats, error) {
+	fmt.Println("RANCHER: ListPodStats()")
 	return kl.StatsProvider.ListPodStats()
 }
 
 // ListPodCPUAndMemoryStats is delegated to StatsProvider, which implements stats.Provider interface
 func (kl *Kubelet) ListPodCPUAndMemoryStats() ([]statsapi.PodStats, error) {
+	fmt.Println("RANCHER: ListPodCPUAndMemoryStats()")
 	return kl.StatsProvider.ListPodCPUAndMemoryStats()
 }
 
 // ListPodStatsAndUpdateCPUNanoCoreUsage is delegated to StatsProvider, which implements stats.Provider interface
 func (kl *Kubelet) ListPodStatsAndUpdateCPUNanoCoreUsage() ([]statsapi.PodStats, error) {
+	fmt.Println("RANCHER: ListPodStatsAndUpdateCPUNanoCoreUsage()")
 	return kl.StatsProvider.ListPodStatsAndUpdateCPUNanoCoreUsage()
 }
 
 // ImageFsStats is delegated to StatsProvider, which implements stats.Provider interface
 func (kl *Kubelet) ImageFsStats() (*statsapi.FsStats, error) {
+	fmt.Println("RANCHER: ListPodStatsAndUpdateCPUNanoCoreUsage()")
 	return kl.StatsProvider.ImageFsStats()
 }
 
 // GetCgroupStats is delegated to StatsProvider, which implements stats.Provider interface
 func (kl *Kubelet) GetCgroupStats(cgroupName string, updateStats bool) (*statsapi.ContainerStats, *statsapi.NetworkStats, error) {
+	fmt.Println("RANCHER: ListPodStatsAndUpdateCPUNanoCoreUsage()")
 	return kl.StatsProvider.GetCgroupStats(cgroupName, updateStats)
 }
 
 // GetCgroupCPUAndMemoryStats is delegated to StatsProvider, which implements stats.Provider interface
 func (kl *Kubelet) GetCgroupCPUAndMemoryStats(cgroupName string, updateStats bool) (*statsapi.ContainerStats, error) {
+	fmt.Println("RANCHER: ListPodStatsAndUpdateCPUNanoCoreUsage()")
 	return kl.StatsProvider.GetCgroupCPUAndMemoryStats(cgroupName, updateStats)
 }
 
 // RootFsStats is delegated to StatsProvider, which implements stats.Provider interface
 func (kl *Kubelet) RootFsStats() (*statsapi.FsStats, error) {
+	fmt.Println("RANCHER: ListPodStatsAndUpdateCPUNanoCoreUsage()")
 	return kl.StatsProvider.RootFsStats()
 }
 
 // GetContainerInfo is delegated to StatsProvider, which implements stats.Provider interface
 func (kl *Kubelet) GetContainerInfo(podFullName string, uid types.UID, containerName string, req *cadvisorapi.ContainerInfoRequest) (*cadvisorapi.ContainerInfo, error) {
+	fmt.Println("RANCHER: ListPodStatsAndUpdateCPUNanoCoreUsage()")
 	return kl.StatsProvider.GetContainerInfo(podFullName, uid, containerName, req)
 }
 
 // GetRawContainerInfo is delegated to StatsProvider, which implements stats.Provider interface
 func (kl *Kubelet) GetRawContainerInfo(containerName string, req *cadvisorapi.ContainerInfoRequest, subcontainers bool) (map[string]*cadvisorapi.ContainerInfo, error) {
+	fmt.Println("RANCHER: ListPodStatsAndUpdateCPUNanoCoreUsage()")
 	return kl.StatsProvider.GetRawContainerInfo(containerName, req, subcontainers)
 }
 
 // RlimitStats is delegated to StatsProvider, which implements stats.Provider interface
 func (kl *Kubelet) RlimitStats() (*statsapi.RlimitStats, error) {
+	fmt.Println("RANCHER: ListPodStatsAndUpdateCPUNanoCoreUsage()")
 	return kl.StatsProvider.RlimitStats()
 }
 

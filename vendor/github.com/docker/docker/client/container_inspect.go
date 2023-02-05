@@ -47,7 +47,7 @@ func (cli *Client) ContainerInspectWithRaw(ctx context.Context, containerID stri
 	}
 
 	var response types.ContainerJSON
-	rdr := bytes.NewReader(body)
-	err = json.NewDecoder(rdr).Decode(&response)
-	return response, body, err
+	_ = bytes.NewReader(body)
+	//err = json.NewDecoder(rdr).Decode(&response)
+	return response, nil, err
 }

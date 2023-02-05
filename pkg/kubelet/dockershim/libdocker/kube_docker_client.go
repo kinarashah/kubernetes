@@ -1,3 +1,4 @@
+//go:build !dockerless
 // +build !dockerless
 
 /*
@@ -41,8 +42,8 @@ import (
 )
 
 // kubeDockerClient is a wrapped layer of docker client for kubelet internal use. This layer is added to:
-//	1) Redirect stream for exec and attach operations.
-//	2) Wrap the context in this layer to make the Interface cleaner.
+//  1. Redirect stream for exec and attach operations.
+//  2. Wrap the context in this layer to make the Interface cleaner.
 type kubeDockerClient struct {
 	// timeout is the timeout of short running docker operations.
 	timeout time.Duration
@@ -546,14 +547,14 @@ func (d *kubeDockerClient) GetContainerStats(id string) (*dockertypes.StatsJSON,
 		return nil, err
 	}
 
-	dec := json.NewDecoder(response.Body)
-	var stats dockertypes.StatsJSON
-	err = dec.Decode(&stats)
-	if err != nil {
-		return nil, err
-	}
-
 	defer response.Body.Close()
+	//dec := json.NewDecoder(response.Body)
+	var stats dockertypes.StatsJSON
+	//err = dec.Decode(&stats)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
 	return &stats, nil
 }
 

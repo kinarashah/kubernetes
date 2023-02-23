@@ -1,5 +1,8 @@
 #!/bin/bash
 
+TAG=v1.24.10
+DRONE_TAG=v1.24.10
+
 if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
     DIRTY="-dirty"
 fi
@@ -22,4 +25,4 @@ fi
 MAJOR_VERSION=$(echo $VERSION | cut -d "." -f 1)
 MINOR_VERSION=$(echo $VERSION | cut -d "." -f 2)
 
-KUBE_GIT_VERSION_FILE=version.txt
+#KUBE_GIT_VERSION_FILE=version.txt

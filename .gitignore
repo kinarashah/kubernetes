@@ -20,6 +20,8 @@
 /output*/
 /_output*/
 /_output
+Dockerfile.dapper*
+version.txt
 
 # Emacs save files
 *~

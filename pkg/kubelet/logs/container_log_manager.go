@@ -216,6 +216,8 @@ func (c *containerLogManager) Clean(ctx context.Context, containerID string) err
 func (c *containerLogManager) rotateLogs(ctx context.Context) error {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+
+	klog.InfoS("ENTERED ROTATE LOGS, ", "HELLO!!!")
 	// TODO(#59998): Use kubelet pod cache.
 	containers, err := c.runtimeService.ListContainers(ctx, &runtimeapi.ContainerFilter{})
 	if err != nil {
@@ -252,6 +254,8 @@ func (c *containerLogManager) rotateLogs(ctx context.Context) error {
 			if err := c.runtimeService.ReopenContainerLog(ctx, id); err != nil {
 				klog.ErrorS(err, "Container log doesn't exist, reopen container log failed", "containerID", id, "path", path)
 				continue
+			} else {
+				klog.InfoS("not returning error??", "how??")
 			}
 			// The container log should be recovered.
 			info, err = c.osInterface.Stat(path)
@@ -261,7 +265,8 @@ func (c *containerLogManager) rotateLogs(ctx context.Context) error {
 			}
 		}
 		if info.Size() < c.policy.MaxSize {
-			continue
+			klog.InfoS("continuing size < maxsize?", info.Size(), c.policy.MaxSize)
+			//continue
 		}
 		// Perform log rotation.
 		if err := c.rotateLog(ctx, id, path); err != nil {

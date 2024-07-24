@@ -28,10 +28,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
+      - name: Print PATH for debugging
+        run: |
+          echo $PATH
+          echo "PATH="__t/go/1.20.14/x64/bin:/$PATH" >> $GITHUB_ENV
+          echo $PATH
+          echo $GITHUB_ENV
+
+      - name: Verify Go installation
+        run: go version
+
+      - name: Print PATH for debugging
+        run: echo $PATH
+
+      - name: Set up Go environment variables
+        run: |
+          echo "GOPATH=$(go env GOPATH)" >> $GITHUB_ENV
+          echo "PATH=$PATH:$(go env GOPATH)/bin" >> $GITHUB_ENV
+
+      - name: Print updated PATH for debugging
+        run: echo $PATH          
 
       - name: build with Dapper
         run: dapper ci

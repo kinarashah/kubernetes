@@ -51,6 +51,10 @@ func (i *imageFsInfoProvider) ImageFsInfoLabel() (string, error) {
 // ContainerFsInfoLabel returns the container fs label for the configured runtime.
 // For remote runtimes, it handles addition runtimes natively understood by cAdvisor.
 func (i *imageFsInfoProvider) ContainerFsInfoLabel() (string, error) {
+	if UsingCriDockerdSocket(i.runtimeEndpoint) {
+		return cadvisorfs.LabelDockerImages, nil
+	}
+
 	if detectCrioWorkaround(i) {
 		return cadvisorfs.LabelCrioContainers, nil
 	}
